@@ -61,6 +61,20 @@ STATS_FILE = "crawler_stats.json"
 
 
 def save_stats():
+    """
+    Saving the collected crawler statistics to JSON file (crawler_stats.json)
+    
+    Saved data includes:
+    unique_urls (list[str]) : List of all unique, normalized, valid URLs
+    longest_page (dict) : the information about the longest page
+    word_freq (dict): frequency count of words across processed pages
+    subdomains (dict[str, list[str]]): a list of unique URL paths under each subdomain
+    
+    Args:
+        None
+    Returns:
+        None
+    """
     with stats_lock:
         data = {
             "unique_urls": list(stats["unique_urls"]),
@@ -78,6 +92,16 @@ def save_stats():
 
 
 def load_stats():
+    """
+    Load previously saved crawler statistics from JSON file to memory.
+    After loading, last_saved_count is updated to reflect the number of unique URLs already processed. 
+    
+    Args:
+        None
+        
+    Return:
+        None
+    """
     global stats, last_saved_count
     if os.path.exists(STATS_FILE):
         try:
@@ -101,20 +125,48 @@ load_stats()
 
 
 def scraper(url, resp):
+    """
+    Scraping a list of links from the page
+
+    Args:
+        url (str): the url that was used to get the current url page
+        resp (str): the current actual url page that is scraped
+    Returns:
+        list: a list of valid links on the page
+    """
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
-    # Implementation required.
-    # url: the URL that was used to get the page
-    # resp.url: the actual url of the page
-    # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
-    # resp.error: when status is not 200, you can check the error here, if needed.
-    # resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
-    #         resp.raw_response.url: the url, again
-    #         resp.raw_response.content: the content of the page!
-    # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+    """
+    Process a fetched page and extract valid outgoing hyperlink on the page.
+
+    Performs serveral validation and filtering steps before processing a page:
+    - Ensures the HTTP response is successful (status 200)
+    - Skips empty or large file pages (>5MB)
+    - Processes only HTML content page
+    - Removes non-visible elements (script, style, noscript)
+    - Filters out non-web hyperlinks on the page
+    - Removes URL fragments from the current fetched page URL and the hyperlinks on the page.
     
+    After validating, extract the current page URL, page content, and word count and save in the crawler_stats.json file
+    The valid hyperlinks are added to the list and the list of links is returned
+    
+    Args:
+        url (str): url: the URL that was used to get the page
+        resp (str): The response object returned by the crawler framework
+        resp.url: the actual url of the page
+        resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
+        resp.error: when status is not 200, you can check the error here, if needed.
+        resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
+        resp.raw_response.url: the url, again
+        resp.raw_response.content: the content of the page!
+
+    Returns:
+        list[str]: 
+        A list of extracted links on the current URL page
+        Returns an empty list if the page is invalid, too large, non-HTML, contains no text, or cannot be parsed.
+    """
     #basic check
     if resp is None or resp.status != 200 or resp.raw_response is None:
         return []
@@ -211,6 +263,22 @@ def simhash_similarity(hash1, hash2):
     return 1 - (distance / SIMHASH_BITS)
 
 def collect_statistics(url, words, word_count):
+    """
+    Saving the web page URL name and statistics to global stats dictionary and JSON file 
+    Before saving the data to JSON file,
+    - Ensures each URL is only processed once (uniqueness tracking)
+    - Records subdomain and its corresponding valid subdomain paths
+    - Updates longest page record 
+    - Update word frequency statistics
+    
+    Args:
+        url (str): the fetched page URL name 
+        words (str): tokenized visible words extracted from the page 
+        word_count (int): number of tokens/words in that page.
+        
+    Returns:
+        None
+    """
     global last_saved_count
 
     parsed = urlparse(url)
@@ -268,9 +336,29 @@ def collect_statistics(url, words, word_count):
         print(f"[STATS] Unique: {current_count}, Subdomains: {len(stats['subdomains'])}, Near-Dups: {dup_count}")
 
 def tokenize(text):
-   return re.findall(r'\b[a-zA-Z]{2,}\b', text.lower())
+    """
+    convert the text with a length greater than 2 to lower case and tokenize
+
+    Args:
+        text (str): the text on the page
+
+    Returns:
+        list[str]: a list of normalized word tokens
+    """
+    return re.findall(r'\b[a-zA-Z]{2,}\b', text.lower())
 
 def is_allowed_host(host):
+    """
+    Checking if the URL hostname is within allowed domain
+
+    Args:
+        host (str): URL hostname
+
+    Returns:
+        bool:
+            if host is empty, return False
+            if host is within allowed domain, return True
+    """
     if not host:
         return False
     host = host.lower()
@@ -284,6 +372,27 @@ def is_valid(url):
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
+    
+    """
+    Determines whether a URL should be crawled. 
+    Added multiple filtering rules to avoid crawler traps.
+    
+    Some Crawler trap detections:
+    Avoids infinite or dynamically generated URL spaces, including:
+        - Calendar and event pages
+        - Query parameters indicating pagination, sorting, filtering, sessions, or dynamic states
+        - Dynamic web pages
+        - long URLs (length > 500 characters)
+        - Versioning or history parameters
+        - excessively deep paths (e.g. repeated loops of the url)
+        - large dataset files, ML dataset storage like UCI ML dataset
+
+    Args:
+        url (str): the URL name
+    Returns:
+        bool: 
+            return True if the 
+    """
     try:
         parsed = urlparse(url)
 
@@ -401,6 +510,14 @@ def is_valid(url):
     
 
 def generate_report():
+    """
+    Reporting the statistics of the data
+    Args:
+        None
+        
+    Return:
+        None
+    """
     load_stats()
 
     lines = []

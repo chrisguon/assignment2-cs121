@@ -57,8 +57,7 @@ STOP_WORDS = {
     "yours", "yourself", "yourselves"
 }
 
-STATS_FILE = "crawler_stats.json"
-
+STATS_FILE = "crawler_stats.json" # to store the web page statistics
 
 def save_stats():
     """
@@ -69,6 +68,8 @@ def save_stats():
     longest_page (dict) : the information about the longest page
     word_freq (dict): frequency count of words across processed pages
     subdomains (dict[str, list[str]]): a list of unique URL paths under each subdomain
+    sim_hases (dict[str, int]): URL name and their corresponding hash value
+    near_duplicates (dict): Two URL name and their similarity scores
     
     Args:
         None
@@ -154,7 +155,7 @@ def extract_next_links(url, resp):
     
     Args:
         url (str): url: the URL that was used to get the page
-        resp (str): The response object returned by the crawler framework
+        resp (str): The response object returned by the crawler
         resp.url: the actual url of the page
         resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
         resp.error: when status is not 200, you can check the error here, if needed.
@@ -241,6 +242,34 @@ def extract_next_links(url, resp):
     return out_links
 
 def compute_simhash(words):
+    """
+    Computing a SimHash fingerprint for a page based on its tokenized words.
+
+    Simhash Algorithm for near-duplicate page
+        1. Initialize a vector v of length SIMHASH_BITS with all zeros.
+        
+        2. For each word on the page:
+            Compute a 128-bit hash using MD5.
+            
+            For i-th bit (0 <= i <= SIMHASH BIT):
+                if the current i-th bit in word hash value is 1
+                    add 1 to v[i]
+                if the current i-th bit in word hash value is 0
+                    add -1 to v[i]
+        
+        3. Build the final fingerprint:
+            For i-th bit in v:
+            if v[i] is positive:
+                set bit i of the fingerprint to 1
+            Otherwise:
+                bit i remains 0
+                
+    Args:
+        words (str): tokenized text contents on the page
+
+    Returns:
+        fingerprint (int): a simhash value of a page used to measure similarity scores 
+    """
     v = [0] * SIMHASH_BITS
     for word in words:
         word_hash = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16)
@@ -258,6 +287,16 @@ def compute_simhash(words):
     return fingerprint
 
 def simhash_similarity(hash1, hash2):
+    """
+    Calculate similarity scores between two simhash values of two pages
+
+    Args:
+        hash1 (int): hash value for page 1
+        hash2 (int): hash value for page 2
+
+    Returns:
+        int: similarity score between two pages
+    """
     xor = hash1 ^ hash2
     distance = bin(xor).count('1')
     return 1 - (distance / SIMHASH_BITS)
@@ -270,6 +309,12 @@ def collect_statistics(url, words, word_count):
     - Records subdomain and its corresponding valid subdomain paths
     - Updates longest page record 
     - Update word frequency statistics
+    
+    For near-duplicate detection:
+        - Generate simhash value for pages with at least 50 words. 
+        - Compare the current page hashvalue with each hashvalue already stored in stats.
+        - If similarity with an existing page exceeds SIMILARITY_THRESHOLD (0.9), 
+          the pair is recorded as a near-duplicate.
     
     Args:
         url (str): the fetched page URL name 

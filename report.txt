@@ -1,0 +1,143 @@
+======================================================================
+WEB CRAWLER REPORT
+======================================================================
+
+Q1. Unique pages: 37200
+
+Q2. Longest page:
+    URL: https://ics.uci.edu/~ejw/authoring/protocol/rfc2518.fr.html
+    Words: 23492
+
+Q3. Top 50 words:
+     1. married: 30911
+     2. may: 21425
+     3. research: 16552
+     4. jan: 16179
+     5. dec: 15681
+     6. mar: 15628
+     7. ny: 15176
+     8. oct: 14997
+     9. jun: 14764
+    10. aug: 14481
+    11. ics: 14238
+    12. apr: 14237
+    13. nov: 14158
+    14. sep: 14017
+    15. feb: 13880
+    16. computer: 13750
+    17. information: 13601
+    18. jul: 13390
+    19. can: 12258
+    20. data: 12092
+    21. uci: 11988
+    22. will: 11177
+    23. family: 10922
+    24. ramesh: 10270
+    25. students: 9874
+    26. one: 9541
+    27. science: 9125
+    28. software: 8582
+    29. us: 8418
+    30. student: 8408
+    31. time: 8132
+    32. news: 8104
+    33. irvine: 7893
+    34. new: 7742
+    35. search: 7676
+    36. events: 7525
+    37. current: 7156
+    38. krakow: 7019
+    39. systems: 6919
+    40. computing: 6835
+    41. learning: 6702
+    42. code: 6506
+    43. contact: 6270
+    44. listing: 6196
+    45. people: 6153
+    46. first: 6113
+    47. university: 5935
+    48. graduate: 5872
+    49. program: 5844
+    50. manhattan: 5811
+
+Q4. Subdomains (76 total):
+    accessibility.ics.uci.edu, 6
+    acoi.ics.uci.edu, 116
+    aiclub.ics.uci.edu, 1
+    alderis.ics.uci.edu, 15
+    archive-beta.ics.uci.edu, 11
+    archive.ics.uci.edu, 195
+    asterix.ics.uci.edu, 14
+    bayes-bats.ics.uci.edu, 7
+    capstone.cs.uci.edu, 8
+    cert.ics.uci.edu, 54
+    chenli.ics.uci.edu, 9
+    cloudberry.ics.uci.edu, 41
+    cml.ics.uci.edu, 255
+    code.ics.uci.edu, 14
+    computableplant.ics.uci.edu, 112
+    courselisting.ics.uci.edu, 3
+    cradl.ics.uci.edu, 17
+    create.ics.uci.edu, 4
+    cs.ics.uci.edu, 12
+    cwicsocal18.ics.uci.edu, 10
+    dgillen.ics.uci.edu, 33
+    ds4all.ics.uci.edu, 4
+    duttgroup.ics.uci.edu, 147
+    dynamo.ics.uci.edu, 32
+    edgelab.ics.uci.edu, 7
+    emj.ics.uci.edu, 36
+    evoke.ics.uci.edu, 2
+    flamingo.ics.uci.edu, 1452
+    fr.ics.uci.edu, 3
+    grape.ics.uci.edu, 2699
+    graphics.ics.uci.edu, 7
+    hack.ics.uci.edu, 2
+    hai.ics.uci.edu, 7
+    hobbes.ics.uci.edu, 10
+    hpi.ics.uci.edu, 5
+    i-sensorium.ics.uci.edu, 5
+    icde2023.ics.uci.edu, 45
+    ics.uci.edu, 25441
+    industryshowcase.ics.uci.edu, 21
+    insite.ics.uci.edu, 9
+    intranet.ics.uci.edu, 1
+    ipubmed.ics.uci.edu, 1
+    isg.ics.uci.edu, 293
+    isi-buds.ics.uci.edu, 4
+    jgarcia.ics.uci.edu, 40
+    luci.ics.uci.edu, 4
+    mailman.ics.uci.edu, 43
+    mcs.ics.uci.edu, 11
+    mhcid.ics.uci.edu, 17
+    mover.ics.uci.edu, 23
+    mswe.ics.uci.edu, 8
+    nalini.ics.uci.edu, 8
+    ngs.ics.uci.edu, 3005
+    oai.ics.uci.edu, 5
+    plrg.ics.uci.edu, 16
+    riscit.ics.uci.edu, 1
+    scale.ics.uci.edu, 7
+    seal.ics.uci.edu, 46
+    sherlock.ics.uci.edu, 7
+    stairs.ics.uci.edu, 4
+    stat.ics.uci.edu, 10
+    studentcouncil.ics.uci.edu, 1
+    students.ics.uci.edu, 1
+    summeracademy.ics.uci.edu, 6
+    support.ics.uci.edu, 2
+    tad.ics.uci.edu, 2
+    tastier.ics.uci.edu, 1
+    tutoring.ics.uci.edu, 5
+    unite.ics.uci.edu, 10
+    vision.ics.uci.edu, 218
+    wics.ics.uci.edu, 1100
+    wiki.ics.uci.edu, 2
+    www-db.ics.uci.edu, 25
+    www.informatics.uci.edu, 1175
+    www.stat.uci.edu, 221
+    xtune.ics.uci.edu, 6
+
+ Near-duplicates detected: 8711
+
+======================================================================

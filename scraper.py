@@ -1,11 +1,11 @@
-import re
-import os
-import json
-from urllib.parse import urlparse, urljoin, urldefrag
+import re #Used for text pattern matching, such as tokenization and URL filtering.
+import os #Used to check if a file exists.
+import json #Used to save and load statistical data to a file
+from urllib.parse import urlparse, urljoin, urldefrag #urljoin, Convert relative URLs to absolute URLs. urldefrag remove # content
 from bs4 import BeautifulSoup
 from collections import defaultdict
-import threading
-import hashlib
+import threading #Used for thread locks to ensure multi-thread safety.
+import hashlib #for simhash compute
 
 ALLOWED_BASE_DOMAINS = {
     "ics.uci.edu",
@@ -16,14 +16,18 @@ ALLOWED_BASE_DOMAINS = {
 
 stats_lock = threading.Lock()
 
-
+'''
+Accessing a non-existent key in a regular dictionary will result in an error.
+The 'defaultdict(int)' function automatically creates a non-existent key with a value of 0.
+'defaultdict(set)' automatically creates an empty set.
+This eliminates the need to check if the key exists beforehand.'''
 stats = {
     "unique_urls": set(),
     "longest_page": {"url": "", "word_count": 0},
     "word_freq": defaultdict(int),
     "subdomains": defaultdict(set),
-    "simhashes": {}, 
-    "near_duplicates": []
+    "simhashes": {}, #Store page fingerprints
+    "near_duplicates": [] #Record duplicate pages found
 }
 
 SIMHASH_BITS = 64   
@@ -87,7 +91,7 @@ def save_stats():
         }
     try:
         with open(STATS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, indent=2) #ensure_ascii make sure not change the content such as chinese word to convert something strange.
     except Exception as e:
         print(f"[ERROR] save_stats: {e}")
 
@@ -185,6 +189,9 @@ def extract_next_links(url, resp):
         return []
     
     #type check
+    #https://example.com/report.pdf Content-Type: application/pdf wrong;
+    #https://example.com/logo.png Content-Type: image/png wrong;
+    #https://www.ics.uci.edu/ Content-Type: text/html true
     try:
         content_type = resp.raw_response.headers.get('Content-Type', '')
         if content_type and 'text/html' not in content_type.lower():
@@ -193,8 +200,16 @@ def extract_next_links(url, resp):
         pass
 
     #parse HTML
+    # what soup like: BeautifulSoup
+    #└── html
+        #├── head
+        #│    └── title → "UCI ICS"
+        #└── body
+            #├── h1 → "Welcome"
+            #├── a (href="/about")
+            #└── a (href="https://google.com")
     try:
-        soup = BeautifulSoup(content, "lxml")
+        soup = BeautifulSoup(content, "lxml") #lxml is faster and can handle some non-standard HTML formats.
     except Exception:
         try:
             soup = BeautifulSoup(content, "html.parser")
@@ -203,6 +218,7 @@ def extract_next_links(url, resp):
         
     base_url = url
     if hasattr(resp.raw_response, 'url') and resp.raw_response.url:
+        #If the URL is redirected, use the final URL.
         base_url = resp.raw_response.url
 
     clean_url, _ = urldefrag(base_url)
@@ -214,6 +230,7 @@ def extract_next_links(url, resp):
     
     #Extract text
     for tag in soup(['script', 'style', 'noscript']):
+        #they are not actual content. eg:<script src="app.js"></script>
         tag.decompose()
 
     text = soup.get_text(separator=' ', strip=True)
@@ -223,7 +240,7 @@ def extract_next_links(url, resp):
     #statistic
     collect_statistics(clean_url, words, word_count)
 
-    #Extract links
+    #Find all `<a>` tags, skip `mailto` and `javascript` links, and convert relative URLs to absolute URLs.
     out_links = []
     for a in soup.find_all("a", href=True):
         href = a.get("href", "").strip()
@@ -272,9 +289,9 @@ def compute_simhash(words):
     """
     v = [0] * SIMHASH_BITS
     for word in words:
-        word_hash = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16)
+        word_hash = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16) #word.encode('utf-8')：MD5 requires bytes；hexdigest()：Get a string of 32 hexadecimal characters (e.g., "9e107d9d..."). Convert a hexadecimal string as a hexadecimal number to a decimal integer.
         for i in range(SIMHASH_BITS):
-            bit = (word_hash >> i) & 1
+            bit = (word_hash >> i) & 1 #Shift right by i bits, moving the i-th bit to the least significant bit. Take only the least significant bit
             if bit:
                 v[i] += 1
             else:
@@ -284,6 +301,13 @@ def compute_simhash(words):
     for i in range(SIMHASH_BITS):
         if v[i] > 0:
             fingerprint |= (1 << i)
+        #eg: fingerprint = 0010 i = 3;
+        #1 << 3 = 1000
+        #fingerprint |= 1000
+        #0010
+        #|1000
+        #-----
+        #1010
     return fingerprint
 
 def simhash_similarity(hash1, hash2):
@@ -297,9 +321,9 @@ def simhash_similarity(hash1, hash2):
     Returns:
         int: similarity score between two pages
     """
-    xor = hash1 ^ hash2
-    distance = bin(xor).count('1')
-    return 1 - (distance / SIMHASH_BITS)
+    xor = hash1 ^ hash2 #XOR, different bits become 1
+    distance = bin(xor).count('1') #Convert an integer to a binary string, such as "0b101001..."
+    return 1 - (distance / SIMHASH_BITS) #Convert to similarity
 
 def collect_statistics(url, words, word_count):
     """
@@ -390,7 +414,8 @@ def tokenize(text):
     Returns:
         list[str]: a list of normalized word tokens
     """
-    return re.findall(r'\b[a-zA-Z]{2,}\b', text.lower())
+    return re.findall(r'\b[a-zA-Z]{2,}\b', text.lower()) #eg: "Hello World! 123 Test" → ['hello', 'world', 'test']
+    # Hello! #1 Peter's
 
 def is_allowed_host(host):
     """
@@ -408,7 +433,7 @@ def is_allowed_host(host):
         return False
     host = host.lower()
     for base in ALLOWED_BASE_DOMAINS:
-        if host == base or host.endswith("." + base):
+        if host == base or host.endswith("." + base): #subdomain
             return True
     return False
 
@@ -441,6 +466,7 @@ def is_valid(url):
     try:
         parsed = urlparse(url)
 
+        #Only accepts HTTP and HTTPS protocols
         if parsed.scheme not in set(["http", "https"]):
             return False
         
@@ -451,6 +477,7 @@ def is_valid(url):
         path = parsed.path.lower()
         query = parsed.query.lower()
 
+        #Filter non-HTML files: images, videos, PDFs, compressed files
         if re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
@@ -466,38 +493,55 @@ def is_valid(url):
         if '/calendar' in path:
             return False
         
-        if 'ical' in query:
+        if 'ical' in query: #eg: https://ics.uci.edu/events/calendar.ics 'ical' in query  → True
             return False
 
         if '/events/' in path:
             return False
         
-        if re.search(r'[?&](date|day|month|year)=', query):
+        if re.search(r'[?&](date|day|month|year)=', query): #?year=2024&month=5
+            #eg: /events?year=2024
             return False
 
-        match = re.search(r'[?&]page=(\d+)', query)
-        if match and int(match.group(1)) > 10:
+        match = re.search(r'[?&]page=(\d+)', query) # /news?page=3, so match.group(1) = "3"
+        if match and int(match.group(1)) > 10: #The first 10 pages usually contain important information.
             return False
 
-        match = re.search(r'[?&]offset=(\d+)', query)
+        match = re.search(r'[?&]offset=(\d+)', query) # /articles?offset=20
         if match and int(match.group(1)) > 500:
             return False
 
+        #?sort=price
+        #?sort=date
+        #?order=asc
+        #?order=desc, which Generate new URLs indefinitely
         if re.search(r'[?&](sort|order|filter)=', query) and query.count('&') >= 4:
             return False
 
+        #/wiki/Page?action=edit
+        #/wiki/Page?action=history
+        #/admin?do=delete
+        #/login?action=login which Edit page, login page, delete operation, backend management page
         if re.search(r'[?&](action|do)=(edit|history|login|delete)', query):
             return False
 
+        #/wiki/Page?oldid=12345
+        #/wiki/Page?diff=123&oldid=122
         if re.search(r'[?&](diff|oldid|version)=', query):
             return False
 
+        #WordPress backend management system
+        #eg: https://example.com/wp-json/wp/v2/posts, which return json
         if '/wp-admin/' in path or '/wp-json/' in path:
             return False
 
+        #https://example.com/category/news/feed
+        #return xml
         if '/feed' in path or '/rss' in path:
             return False
 
+        #/page?session=123
+        #/page?session=456
         if re.search(r'[?&](session|sid|jsession|phpsessid)=', query):
             return False
 
@@ -505,28 +549,38 @@ def is_valid(url):
             return False
 
         segments = [s for s in path.split('/') if s]
-        if len(segments) > 8:
+        if len(segments) > 8: #A path that's too deep is often a trap.
             return False
 
+        #Path duplication
         if len(segments) >= 3:
             seen = {}
             for seg in segments:
                 seen[seg] = seen.get(seg, 0) + 1
-                if seen[seg] > 2:
+                if seen[seg] > 2: #For example, in a URL like /a/b/a/c/a/d, the "a" appears 3 times.
                     return False
 
+        #/doku.php?id=page
+        #/doku.php?id=page&do=edit
+        #Edit Page | History Page | Original Export Page | Login Page
         if 'doku.php' in path:
             return False
 
+        #do=edit
+        #do=history
+        #do=login
+        #do=export_raw
         if re.search(r'[?&]do=', query):
             return False
 
+        #These paths contain a large number of data files.
         if '/datasets/' in path:
             return False
 
         if '/data/' in path and '/class/' in path:
             return False
 
+        #Version History / Difference Comparison
         if re.search(r'[?&]version=', query):
             return False
 
@@ -536,6 +590,8 @@ def is_valid(url):
         if '/raw-attachment/' in path or '/zip-attachment/' in path:
             return False
 
+        #?page=abc&format=raw
+        #?page=abc&format=txt
         if re.search(r'[?&]format=', query):
             return False
 
@@ -577,6 +633,9 @@ def generate_report():
     lines.append(f"    Words: {stats['longest_page']['word_count']}")
 
     lines.append(f"\nQ3. Top 50 words:")
+    #x is a (word, count) tuple; 
+    #-x[1] is the negative word frequency, the negative sign puts the higher frequency first; 
+    #x[0] is the word, and when the frequencies are the same, they are ordered alphabetically.
     sorted_words = sorted(stats['word_freq'].items(), key=lambda x: (-x[1], x[0]))[:50]
     for i, (word, count) in enumerate(sorted_words, 1):
         lines.append(f"    {i:2d}. {word}: {count}")
